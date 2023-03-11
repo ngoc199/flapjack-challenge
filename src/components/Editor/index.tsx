@@ -2,8 +2,7 @@ import "grapesjs/dist/css/grapes.min.css";
 import GjsWebpagePlugin from "grapesjs-preset-webpage";
 import grapesjs from "grapesjs";
 import { useEffect, useRef } from "react";
-
-const freeRangeTextClassName = "freeRangeText";
+import { freeRangeTextBlock, isFreeRangeText } from "./FreeRangeText";
 
 export default function Editor() {
   const editorRef = useRef(null);
@@ -13,15 +12,13 @@ export default function Editor() {
     if (canvasContainer === null) return;
     const editor = renderEditor(canvasContainer, {
       width: "auto",
-      height: "700px",
+      height: "100vh",
     });
 
     editor.onReady(() => {
+      // Add new text component with the content "Ngoc" when the Free-Range Text component is seletect
       editor.on("component:selected", (model) => {
-        const rawClassName = model.attributes.attributes.class;
-        if (!rawClassName) return;
-        const className = String(rawClassName);
-        if (className.split(/\s/).includes(freeRangeTextClassName)) {
+        if (isFreeRangeText(model)) {
           editor.DomComponents.addComponent(
             {
               type: "text",
@@ -34,15 +31,20 @@ export default function Editor() {
     });
 
     // Clean the editor component
-    // return function cleanup() {
-    //   const editors = (grapesjs as any).editors;
-    //   editors.filter(
-    //     (e: grapesjs.Editor) =>
-    //       (e.Config as grapesjs.EditorConfig).container !==
-    //       (editor.Config as grapesjs.EditorConfig).container
-    //   );
-    //   editor.destroy();
-    // };
+    return function cleanup() {
+      const editors = (grapesjs as any).editors;
+      editors.filter(
+        (e: grapesjs.Editor) =>
+          (e.Config as grapesjs.EditorConfig).container !==
+          (editor.Config as grapesjs.EditorConfig).container
+      );
+
+      /**
+       * Though this destroy method might work in production, it causes unexpected type error in development.
+       * Since React 18 will trigger useEffect twice in development, grapesjs somehow does not like it and will throw the type error because the previous editor instance is destroyed.
+       */
+      // editor.destroy();
+    };
   }, []);
 
   return (
@@ -51,37 +53,6 @@ export default function Editor() {
     </main>
   );
 }
-
-const freeRangeTextBlock: grapesjs.BlockOptions & { id: string } = {
-  id: "free-range-text",
-  label: "Free-Range Text",
-  content: {
-    tagName: "div",
-    draggable: true,
-    dmode: "absolute",
-    attributes: { class: freeRangeTextClassName },
-    styles: `
-        .freeRangeText {
-            display: inline-block;
-            padding: 1rem 2rem;
-            border: 1px solid #444;
-        }
-    `,
-    components: [
-      {
-        tagName: "span",
-        content: "hello, my message is: ",
-        draggable: false,
-      },
-      {
-        tagName: "span",
-        components: "text box",
-        type: "text",
-        draggable: false,
-      },
-    ],
-  },
-};
 
 function renderEditor(
   canvasContainer: HTMLElement,
